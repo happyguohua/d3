@@ -1,5 +1,5 @@
 {
   "name": "github-d3",
-  "version": "3.0.0pre",
+  "version": "3.0.0pre-github",
   "main": "./d3.github.js"
 }
