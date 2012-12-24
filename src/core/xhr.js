@@ -3,16 +3,18 @@ d3.xhr = function(url, mimeType, callback) {
       dispatch = d3.dispatch("progress", "load", "error"),
       headers = {},
       response = d3_identity,
-      request = new XMLHttpRequest;
+      request = new (window.XDomainRequest && /^(http(s)?:)?\/\//.test(url) ? XDomainRequest : XMLHttpRequest);
 
-  request.onreadystatechange = function() {
-    if (request.readyState === 4) {
-      var s = request.status;
-      !s && request.response || s >= 200 && s < 300 || s === 304
-          ? dispatch.load.call(xhr, response.call(xhr, request))
-          : dispatch.error.call(xhr, request);
-    }
-  };
+  "onload" in request
+      ? request.onload = request.onerror = respond
+      : request.onreadystatechange = function() { request.readyState > 3 && respond(); };
+
+  function respond() {
+    var s = request.status;
+    !s && request.responseText || s >= 200 && s < 300 || s === 304
+        ? dispatch.load.call(xhr, response.call(xhr, request))
+        : dispatch.error.call(xhr, request);
+  }
 
   request.onprogress = function(event) {
     var o = d3.event;
@@ -55,7 +57,7 @@ d3.xhr = function(url, mimeType, callback) {
     if (arguments.length === 2 && typeof data === "function") callback = data, data = null;
     request.open(method, url, true);
     if (mimeType != null && !("accept" in headers)) headers["accept"] = mimeType + ",*/*";
-    for (var name in headers) request.setRequestHeader(name, headers[name]);
+    if (request.setRequestHeader) for (var name in headers) request.setRequestHeader(name, headers[name]);
     if (mimeType != null && request.overrideMimeType) request.overrideMimeType(mimeType);
     if (callback != null) xhr.on("error", callback).on("load", function(request) { callback(null, request); });
     request.send(data == null ? null : data);
@@ -70,5 +72,11 @@ d3.xhr = function(url, mimeType, callback) {
   d3.rebind(xhr, dispatch, "on");
 
   if (arguments.length === 2 && typeof mimeType === "function") callback = mimeType, mimeType = null;
-  return callback == null ? xhr : xhr.get(callback);
+  return callback == null ? xhr : xhr.get(d3_xhr_fixCallback(callback));
 };
+
+function d3_xhr_fixCallback(callback) {
+  return callback.length === 1
+      ? function(error, request) { callback(error == null ? request : null); }
+      : callback;
+}

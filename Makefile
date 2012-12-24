@@ -1,7 +1,7 @@
 # See the README for installation instructions.
 
 NODE_PATH ?= ./node_modules
-JS_UGLIFY = $(NODE_PATH)/uglify-js2/bin/uglifyjs2
+JS_UGLIFY = $(NODE_PATH)/uglify-js/bin/uglifyjs
 JS_TESTER = $(NODE_PATH)/vows/bin/vows
 LOCALE ?= en_US
 
@@ -46,6 +46,7 @@ d3.core.js: \
 	src/core/number.js \
 	src/core/sum.js \
 	src/core/quantile.js \
+	src/core/shuffle.js \
 	src/core/transpose.js \
 	src/core/zip.js \
 	src/core/bisect.js \
@@ -176,21 +177,35 @@ d3.layout.js: \
 
 d3.geo.js: \
 	src/geo/geo.js \
-	src/geo/type.js \
+	src/geo/stream.js \
+	src/geo/spherical.js \
+	src/geo/cartesian.js \
+	src/geo/resample.js \
 	src/geo/albers-usa.js \
 	src/geo/albers.js \
 	src/geo/azimuthal-equal-area.js \
 	src/geo/azimuthal-equidistant.js \
 	src/geo/bounds.js \
+	src/geo/centroid.js \
 	src/geo/circle.js \
+	src/geo/clip.js \
+	src/geo/clip-antimeridian.js \
+	src/geo/clip-circle.js \
 	src/geo/compose.js \
 	src/geo/equirectangular.js \
 	src/geo/gnomonic.js \
 	src/geo/graticule.js \
+	src/geo/interpolate.js \
 	src/geo/greatArc.js \
 	src/geo/mercator.js \
 	src/geo/orthographic.js \
 	src/geo/path.js \
+	src/geo/path-buffer.js \
+	src/geo/path-context.js \
+	src/geo/path-area.js \
+	src/geo/path-centroid.js \
+	src/geo/area.js \
+	src/geo/centroid.js \
 	src/geo/projection.js \
 	src/geo/rotation.js \
 	src/geo/stereographic.js \

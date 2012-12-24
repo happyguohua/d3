@@ -12,12 +12,9 @@
     };
   }
   d3 = {
-    version: "3.0.0pre"
+    version: "3.0.0"
   };
-  var π = Math.PI, ε = 1e-6, εε = .001, d3_radians = π / 180, d3_degrees = 180 / π;
-  function d3_zero() {
-    return 0;
-  }
+  var π = Math.PI, ε = 1e-6, d3_radians = π / 180, d3_degrees = 180 / π;
   function d3_target(d) {
     return d.target;
   }
@@ -234,8 +231,16 @@
     return s;
   };
   d3.quantile = function(values, p) {
-    var H = (values.length - 1) * p + 1, h = Math.floor(H), v = values[h - 1], e = H - h;
+    var H = (values.length - 1) * p + 1, h = Math.floor(H), v = +values[h - 1], e = H - h;
     return e ? v + e * (values[h] - v) : v;
+  };
+  d3.shuffle = function(array) {
+    var m = array.length, t, i;
+    while (m) {
+      i = Math.random() * m-- | 0;
+      t = array[m], array[m] = array[i], array[i] = t;
+    }
+    return array;
   };
   d3.transpose = function(matrix) {
     return d3.zip.apply(d3, matrix);
@@ -390,13 +395,14 @@
     return n ? Math.round(x * (n = Math.pow(10, n))) / n : Math.round(x);
   };
   d3.xhr = function(url, mimeType, callback) {
-    var xhr = {}, dispatch = d3.dispatch("progress", "load", "error"), headers = {}, response = d3_identity, request = new XMLHttpRequest();
-    request.onreadystatechange = function() {
-      if (request.readyState === 4) {
-        var s = request.status;
-        !s && request.response || s >= 200 && s < 300 || s === 304 ? dispatch.load.call(xhr, response.call(xhr, request)) : dispatch.error.call(xhr, request);
-      }
+    var xhr = {}, dispatch = d3.dispatch("progress", "load", "error"), headers = {}, response = d3_identity, request = new (window.XDomainRequest && /^(http(s)?:)?\/\//.test(url) ? XDomainRequest : XMLHttpRequest)();
+    "onload" in request ? request.onload = request.onerror = respond : request.onreadystatechange = function() {
+      request.readyState > 3 && respond();
     };
+    function respond() {
+      var s = request.status;
+      !s && request.responseText || s >= 200 && s < 300 || s === 304 ? dispatch.load.call(xhr, response.call(xhr, request)) : dispatch.error.call(xhr, request);
+    }
     request.onprogress = function(event) {
       var o = d3.event;
       d3.event = event;
@@ -430,7 +436,7 @@
       if (arguments.length === 2 && typeof data === "function") callback = data, data = null;
       request.open(method, url, true);
       if (mimeType != null && !("accept" in headers)) headers["accept"] = mimeType + ",*/*";
-      for (var name in headers) request.setRequestHeader(name, headers[name]);
+      if (request.setRequestHeader) for (var name in headers) request.setRequestHeader(name, headers[name]);
       if (mimeType != null && request.overrideMimeType) request.overrideMimeType(mimeType);
       if (callback != null) xhr.on("error", callback).on("load", function(request) {
         callback(null, request);
@@ -445,8 +451,13 @@
     d3.rebind(xhr, dispatch, "on");
     if (arguments.length === 2 && typeof mimeType === "function") callback = mimeType, 
     mimeType = null;
-    return callback == null ? xhr : xhr.get(callback);
+    return callback == null ? xhr : xhr.get(d3_xhr_fixCallback(callback));
   };
+  function d3_xhr_fixCallback(callback) {
+    return callback.length === 1 ? function(error, request) {
+      callback(error == null ? request : null);
+    } : callback;
+  }
   d3.text = function() {
     return d3.xhr.apply(d3, arguments).response(d3_text);
   };
@@ -3703,21 +3714,21 @@
       this.on("mousedown.drag", mousedown).on("touchstart.drag", mousedown);
     }
     function mousedown() {
-      var target = this, event_ = event.of(target, arguments), eventTarget = d3.event.target, touchId = d3.event.touches && d3.event.changedTouches[0].identifier, offset, origin_ = point(), moved = 0;
-      var w = d3.select(window).on(touchId ? "touchmove.drag-" + touchId : "mousemove.drag", dragmove).on(touchId ? "touchend.drag-" + touchId : "mouseup.drag", dragend, true);
+      var target = this, event_ = event.of(target, arguments), eventTarget = d3.event.target, touchId = d3.event.touches ? d3.event.changedTouches[0].identifier : null, offset, origin_ = point(), moved = 0;
+      var w = d3.select(window).on(touchId != null ? "touchmove.drag-" + touchId : "mousemove.drag", dragmove).on(touchId != null ? "touchend.drag-" + touchId : "mouseup.drag", dragend, true);
       if (origin) {
         offset = origin.apply(target, arguments);
         offset = [ offset.x - origin_[0], offset.y - origin_[1] ];
       } else {
         offset = [ 0, 0 ];
       }
-      if (!touchId) d3_eventCancel();
+      if (touchId == null) d3_eventCancel();
       event_({
         type: "dragstart"
       });
       function point() {
         var p = target.parentNode;
-        return touchId ? d3.touches(p).filter(function(p) {
+        return touchId != null ? d3.touches(p).filter(function(p) {
           return p.identifier === touchId;
         })[0] : d3.mouse(p);
       }
@@ -3743,7 +3754,7 @@
           d3_eventCancel();
           if (d3.event.target === eventTarget) w.on("click.drag", click, true);
         }
-        w.on(touchId ? "touchmove.drag-" + touchId : "mousemove.drag", null).on(touchId ? "touchend.drag-" + touchId : "mouseup.drag", null);
+        w.on(touchId != null ? "touchmove.drag-" + touchId : "mousemove.drag", null).on(touchId != null ? "touchend.drag-" + touchId : "mouseup.drag", null);
       }
       function click() {
         d3_eventCancel();
@@ -3855,8 +3866,8 @@
       translate0 = null;
     }
     function dblclick() {
-      var p = d3.mouse(this), l = location(p);
-      scaleTo(d3.event.shiftKey ? scale / 2 : scale * 2);
+      var p = d3.mouse(this), l = location(p), k = Math.log(scale) / Math.LN2;
+      scaleTo(Math.pow(2, d3.event.shiftKey ? Math.ceil(k) - 1 : Math.floor(k) + 1));
       translateTo(p, l);
       dispatch(event.of(this, arguments));
     }
@@ -4267,8 +4278,7 @@
       this.on("mouseover.force", d3_layout_forceMouseover).on("mouseout.force", d3_layout_forceMouseout).call(drag);
     };
     function dragmove(d) {
-      d.px = d3.event.x;
-      d.py = d3.event.y;
+      d.px = d3.event.x, d.py = d3.event.y;
       force.resume();
     }
     return d3.rebind(force, event, "on");
@@ -4281,6 +4291,7 @@
   }
   function d3_layout_forceMouseover(d) {
     d.fixed |= 4;
+    d.px = d.x, d.py = d.y;
   }
   function d3_layout_forceMouseout(d) {
     d.fixed &= 3;
@@ -4616,10 +4627,8 @@
   }
   d3.layout.hierarchy = function() {
     var sort = d3_layout_hierarchySort, children = d3_layout_hierarchyChildren, value = d3_layout_hierarchyValue;
-    function recurse(data, depth, nodes) {
-      var childs = children.call(hierarchy, data, depth), node = d3_layout_hierarchyInline ? data : {
-        data: data
-      };
+    function recurse(node, depth, nodes) {
+      var childs = children.call(hierarchy, node, depth);
       node.depth = depth;
       nodes.push(node);
       if (childs && (n = childs.length)) {
@@ -4633,7 +4642,7 @@
         if (sort) c.sort(sort);
         if (value) node.value = v;
       } else if (value) {
-        node.value = +value.call(hierarchy, data, depth) || 0;
+        node.value = +value.call(hierarchy, node, depth) || 0;
       }
       return node;
     }
@@ -4643,7 +4652,7 @@
         var i = -1, n, j = depth + 1;
         while (++i < n) v += revalue(children[i], j);
       } else if (value) {
-        v = +value.call(hierarchy, d3_layout_hierarchyInline ? node : node.data, depth) || 0;
+        v = +value.call(hierarchy, node, depth) || 0;
       }
       if (value) node.value = v;
       return v;
@@ -4676,11 +4685,8 @@
   };
   function d3_layout_hierarchyRebind(object, hierarchy) {
     d3.rebind(object, hierarchy, "sort", "children", "value");
+    object.nodes = object;
     object.links = d3_layout_hierarchyLinks;
-    object.nodes = function(d) {
-      d3_layout_hierarchyInline = true;
-      return (object.nodes = object)(d);
-    };
     return object;
   }
   function d3_layout_hierarchyChildren(d) {
@@ -4702,7 +4708,6 @@
       });
     }));
   }
-  var d3_layout_hierarchyInline = false;
   d3.layout.pack = function() {
     var hierarchy = d3.layout.hierarchy().sort(d3_layout_packSort), padding = 0, size = [ 1, 1 ];
     function pack(d, i) {
