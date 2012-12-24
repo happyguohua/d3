@@ -19,7 +19,6 @@ all: \
 	d3.scale.js \
 	d3.svg.js \
 	d3.behavior.js \
-	d3.layout.js \
 	d3.time.js \
 	src/end.js
 
